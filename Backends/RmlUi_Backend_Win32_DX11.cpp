@@ -1,4 +1,5 @@
 #include "RmlUi_Backend.h"
+#include "RmlUi_Backend_Win32_DX11.h"
 #include "RmlUi_Include_Windows.h"
 #include "RmlUi_Platform_Win32.h"
 #include "RmlUi_Renderer_DX11.h"
@@ -92,6 +93,18 @@ static bool has_dpi_support = false;
 static ProcSetProcessDpiAwarenessContext procSetProcessDpiAwarenessContext = NULL;
 static ProcGetDpiForWindow procGetDpiForWindow = NULL;
 static ProcAdjustWindowRectExForDpi procAdjustWindowRectExForDpi = NULL;
+static bool force_warp_device = false;
+static bool using_warp_device = false;
+
+void Backend::SetForceWarpDevice(bool force_warp)
+{
+	force_warp_device = force_warp;
+}
+
+bool Backend::IsUsingWarpDevice()
+{
+	return using_warp_device;
+}
 
 // Make ourselves DPI aware on supported Windows versions.
 static void InitializeDpiSupport()
@@ -484,6 +497,7 @@ static HWND InitializeWindow(HINSTANCE instance_handle, const std::wstring& name
 
 static bool CreateDeviceD3D(HWND hwnd, DeviceResources& device_resources)
 {
+	using_warp_device = false;
 	// Setup swap chain
 	DXGI_SWAP_CHAIN_DESC sd;
 	ZeroMemory(&sd, sizeof(sd));
@@ -511,13 +525,21 @@ static bool CreateDeviceD3D(HWND hwnd, DeviceResources& device_resources)
 		D3D_FEATURE_LEVEL_11_0,
 		D3D_FEATURE_LEVEL_10_0,
 	};
-	HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray, 2,
+	const D3D_DRIVER_TYPE initial_driver = force_warp_device ? D3D_DRIVER_TYPE_WARP : D3D_DRIVER_TYPE_HARDWARE;
+	HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, initial_driver, nullptr, createDeviceFlags, featureLevelArray, 2,
 		D3D11_SDK_VERSION, &sd, &device_resources.pSwapChain, &device_resources.pd3dDevice, &featureLevel, &device_resources.pd3dDeviceContext);
-	if (res == DXGI_ERROR_UNSUPPORTED) // Try high-performance WARP software driver if hardware is not available.
+	using_warp_device = force_warp_device && SUCCEEDED(res);
+	if (!force_warp_device && res == DXGI_ERROR_UNSUPPORTED) // Try WARP when hardware Direct3D is unavailable.
+	{
 		res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd,
 			&device_resources.pSwapChain, &device_resources.pd3dDevice, &featureLevel, &device_resources.pd3dDeviceContext);
+		using_warp_device = SUCCEEDED(res);
+	}
 	if (res != S_OK)
+	{
+		using_warp_device = false;
 		return false;
+	}
 
 	CreateRenderTarget(data->device_resources);
 	return true;
