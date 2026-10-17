@@ -15,6 +15,8 @@ public:
 
 	// Optionally, provide or change the window to be used for setting the mouse cursor, clipboard text and IME position.
 	void SetWindow(HWND window_handle);
+	// The host application may customize its non-client frame without replacing the backend.
+	HWND GetWindow() const { return window_handle; }
 
 	// -- Inherited from Rml::SystemInterface  --
 
