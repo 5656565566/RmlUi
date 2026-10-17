@@ -98,7 +98,9 @@ constexpr const char shader_frag_color[] = RMLUI_SHADER_HEADER R"(
 struct PS_Input
 {
     float4 position : SV_Position;
-    float4 color : COLOR;
+    // Coverage fringes carry premultiplied color. Pixel-center extrapolation under
+    // MSAA can push alpha above one and create bright spots after alpha is clamped.
+    centroid float4 color : COLOR;
     float2 uv : TEXCOORD;
 };
 

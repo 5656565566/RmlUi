@@ -56,7 +56,9 @@ in vec4 inColor0;
 in vec2 inTexCoord0;
 
 out vec2 fragTexCoord;
-out vec4 fragColor;
+// Keep coverage colors inside the primitive under MSAA. Match this qualifier on
+// fragment inputs as required by GLSL 3.30; texture coordinates stay unchanged.
+centroid out vec4 fragColor;
 
 void main() {
 	fragTexCoord = inTexCoord0;
@@ -71,7 +73,7 @@ void main() {
 static const char* shader_frag_texture = RMLUI_SHADER_HEADER R"(
 uniform sampler2D _tex;
 in vec2 fragTexCoord;
-in vec4 fragColor;
+centroid in vec4 fragColor;
 
 out vec4 finalColor;
 
@@ -82,7 +84,7 @@ void main() {
 )";
 static const char* shader_frag_color = RMLUI_SHADER_HEADER R"(
 in vec2 fragTexCoord;
-in vec4 fragColor;
+centroid in vec4 fragColor;
 
 out vec4 finalColor;
 
@@ -110,7 +112,7 @@ uniform float _stop_positions[MAX_NUM_STOPS]; // normalized, 0 -> starting point
 uniform int _num_stops;
 
 in vec2 fragTexCoord;
-in vec4 fragColor;
+centroid in vec4 fragColor;
 out vec4 finalColor;
 
 vec4 mix_stop_colors(float t) {
@@ -160,7 +162,7 @@ uniform float _value;
 uniform vec2 _dimensions;
 
 in vec2 fragTexCoord;
-in vec4 fragColor;
+centroid in vec4 fragColor;
 out vec4 finalColor;
 
 void main() {
